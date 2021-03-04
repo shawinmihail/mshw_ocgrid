@@ -44,6 +44,21 @@ public:
     {
     };
     
+    float get_size()
+    {
+        return _size;
+    };
+    
+    float get_resolution()
+    {
+        return _resolution;
+    };
+    
+    int get_dimention()
+    {
+        return _dimention;
+    };
+    
 private:
     bool check_index_in(const GridIndex& index)
     {
@@ -238,7 +253,7 @@ private:
         return indexes;
     };
     
-    void refresh_grid(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s)
+    void refresh_grid(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s)
     {
         for (int i = 0; i < p1s.size(); i ++)
         {

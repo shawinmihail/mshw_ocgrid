@@ -40,6 +40,17 @@ public:
         return _ocGrid;
     }
     
+    std::vector<Eigen::Vector2f> get_obstcl_poits()
+    {
+        std::vector<Eigen::Vector2f> res;
+        std::vector<GridIndex> inds = find_cells(ocgrid_constants::UNMARKED_OBSTCL);
+        for (GridIndex index : inds)
+        {
+            res.push_back(center_of_cell(index));
+        }
+        return res;
+    };
+    
     ~OcGrid()
     {
     };
@@ -279,6 +290,33 @@ private:
                 set_value_on_index(index, ocgrid_constants::UNMARKED_OBSTCL);
             }
         }
+    };
+    
+    std::vector<GridIndex> find_cells(uint8_t cell_type)
+    {
+        std::vector<GridIndex> res;
+        for (int x = 0; x < _dimention; x++)
+        {
+            for (int y = 0; x < _dimention; x++)
+            {
+                if (_ocGrid(x,y) == cell_type)
+                {
+                    GridIndex gi;
+                    gi.x = x;
+                    gi.y = y;
+                    res.push_back(gi);
+                }
+            }
+        }
+        
+        return res;
+    };
+    
+    Eigen::Vector2f center_of_cell(GridIndex index)
+    {
+        float center_x = -(_resolution * _dimention)/2 + (_resolution * index.x) + _resolution/2;
+        float center_y = -(_resolution * _dimention)/2 + (_resolution * index.y) + _resolution/2;
+        return Eigen::Vector2f(center_x, center_y);
     }
 
 private:

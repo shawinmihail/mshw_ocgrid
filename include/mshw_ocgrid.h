@@ -30,9 +30,14 @@ public:
         _ocGrid.setConstant(_dimention, _dimention, ocgrid_constants::UNKNOWN);
     };
     
-    void update(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s)
+    void update_no_lim(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s)
     {
         refresh_grid(p1s, p2s);
+    }
+    
+    void update(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s, float lim)
+    {
+        refresh_grid_with_lim(p1s, p2s, lim);
     }
     
     const Eigen::Matrix<uint8_t, Eigen::Dynamic, Eigen::Dynamic>& get_map()
@@ -173,6 +178,47 @@ private:
         return indexes;
     };
     
+    std::vector<GridIndex> endray_closed_indexes_with_lim(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float lim)
+    {
+        float eps = ocgrid_constants::eps;
+        std::vector<GridIndex> indexes;
+        Eigen::Vector2f dp = p2 - p1;
+        float ndp = dp.norm();
+        if (ndp < eps)
+        {
+            return indexes;
+        }
+        Eigen::Vector2f dir = dp / ndp;
+            
+        if (ndp > lim)
+        {
+            return indexes;
+        }
+        
+        return x_area_indexes_of_point(p2);
+    }
+    
+    std::vector<GridIndex> onray_free_indexes_with_lim(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float lim)
+    {
+        float eps = ocgrid_constants::eps;
+        std::vector<GridIndex> indexes;
+        Eigen::Vector2f dp = p2 - p1;
+        float ndp = dp.norm();
+        if (ndp < eps)
+        {
+            return indexes;
+        }
+        Eigen::Vector2f dir = dp / ndp;
+        
+        if (ndp > lim)
+        {
+            ndp = lim;
+        }
+        
+        Eigen::Vector2f p2_cut = p1 + dir*ndp;
+        return onray_free_indexes(p1, p2_cut);
+    }
+    
     std::vector<GridIndex> onray_free_indexes(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2)
     { 
         float eps = ocgrid_constants::eps;
@@ -285,6 +331,34 @@ private:
             }
             
             std::vector<GridIndex> end_ray_closed =  x_area_indexes_of_point(p2);
+            for (const GridIndex& index : end_ray_closed)
+            {
+                set_value_on_index(index, ocgrid_constants::UNMARKED_OBSTCL);
+            }
+        }
+    };
+    
+    void refresh_grid_with_lim(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s, float lim)
+    {
+        for (int i = 0; i < p1s.size(); i ++)
+        {
+
+            Eigen::Vector2f p1 = p1s.at(i);
+            Eigen::Vector2f p2 = p2s.at(i);
+                 
+            std::vector<GridIndex> begin_ray_opened =  x_area_indexes_of_point(p1);
+            for (const GridIndex& index : begin_ray_opened)
+            {
+                set_value_on_index(index, ocgrid_constants::FREE);
+            }
+            
+            std::vector<GridIndex> on_ray_opened =  onray_free_indexes_with_lim(p1, p2, lim);
+            for (const GridIndex& index : on_ray_opened)
+            {
+                set_value_on_index(index, ocgrid_constants::FREE);
+            }
+            
+            std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : end_ray_closed)
             {
                 set_value_on_index(index, ocgrid_constants::UNMARKED_OBSTCL);

@@ -6,21 +6,22 @@
 
 int main(int argc, char *argv[])
 {
-    OcGrid og(10, 0.1);
+    OcGrid og(50, 0.5);
     
 
     std::vector<Eigen::Vector2f> p1s;
-    p1s.push_back(Eigen::Vector2f(0,0));
-    p1s.push_back(Eigen::Vector2f(0,0));
-    p1s.push_back(Eigen::Vector2f(0,0));
+    p1s.push_back(Eigen::Vector2f(0.7, 0.0));
     std::vector<Eigen::Vector2f> p2s;
-    p2s.push_back(Eigen::Vector2f(1,2));
-    p2s.push_back(Eigen::Vector2f(2,1));
-    p2s.push_back(Eigen::Vector2f(-1.75,2.25));
+    p2s.push_back(Eigen::Vector2f(6.04, 0.93));
     
     og.update(p1s, p2s);
+    std::vector<Eigen::Vector2f> vectors = og.get_obstcl_poits();
+    for (auto v : vectors)
+    {
+        std::cout << std::endl << v.transpose() << std::endl;
+    }
 
-    std::cout << std::endl << og.get_map().cast<int>() << std::endl;
+    //std::cout << std::endl << og.get_map().cast<int>() << std::endl;
     
     return 0;
 }

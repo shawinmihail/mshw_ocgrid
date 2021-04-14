@@ -297,7 +297,7 @@ private:
         std::vector<GridIndex> res;
         for (int x = 0; x < _dimention; x++)
         {
-            for (int y = 0; x < _dimention; x++)
+            for (int y = 0; y < _dimention; y++)
             {
                 if (_ocGrid(x,y) == cell_type)
                 {

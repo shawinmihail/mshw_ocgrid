@@ -311,7 +311,7 @@ private:
     };
     
     void refresh_grid(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s)
-    {
+    { // REMAKE LIKE refresh_grid wth lim
         for (int i = 0; i < p1s.size(); i ++)
         {
 
@@ -342,7 +342,6 @@ private:
     {
         for (int i = 0; i < p1s.size(); i ++)
         {
-
             Eigen::Vector2f p1 = p1s.at(i);
             Eigen::Vector2f p2 = p2s.at(i);
                  
@@ -351,13 +350,25 @@ private:
             {
                 set_value_on_index(index, ocgrid_constants::FREE);
             }
-            
+        }
+        
+        for (int i = 0; i < p1s.size(); i ++)
+        {
+            Eigen::Vector2f p1 = p1s.at(i);
+            Eigen::Vector2f p2 = p2s.at(i);
+
             std::vector<GridIndex> on_ray_opened =  onray_free_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : on_ray_opened)
             {
                 set_value_on_index(index, ocgrid_constants::FREE);
             }
-            
+        }
+        
+        for (int i = 0; i < p1s.size(); i ++)
+        {
+            Eigen::Vector2f p1 = p1s.at(i);
+            Eigen::Vector2f p2 = p2s.at(i);
+
             std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : end_ray_closed)
             {

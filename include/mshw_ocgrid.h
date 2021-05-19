@@ -59,6 +59,11 @@ public:
     {
     };
     
+    void exponentially_foget(float rate)
+    {
+        _ocGrid = (_ocGrid.cast<float>() * rate).cast<int8_t>();
+    }
+    
     float get_size()
     {
         return _size;

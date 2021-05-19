@@ -58,6 +58,11 @@ public:
     ~OcGrid()
     {
     };
+
+    void clear()
+    {
+        _ocGrid.setConstant(_dimention, _dimention, ocgrid_constants::UNKNOWN);
+    }
     
     void exponentially_foget(float rate)
     {

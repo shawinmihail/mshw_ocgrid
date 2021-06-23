@@ -7,14 +7,6 @@
 namespace ocgrid_constants
 {
     static const float eps = 1e-3;
-    
-    static int8_t UNKNOWN = 0;
-    static int8_t FREE_ADDITION = -2;
-    static int8_t BUSY_ADDITION = 5; // * 4 cause we use x area when find busy
-    static int8_t MIN_BUSY = 10;
-    static int8_t MAX_BUSY = 50;
-    static int8_t MIN_FREE = -50;
-    static int8_t MAX_FREE = -10;
 };
 
 struct GridIndex
@@ -26,17 +18,21 @@ struct GridIndex
 class OcGrid
 {
 public:
-    OcGrid(float min_size, float resolution)
+    OcGrid(float min_size, float resolution, float min_free_val, float max_free_val, float min_busy_val, float max_busy_val)
     {
         _resolution = resolution;
         _dimention = (int)std::ceil(min_size/resolution);
         _size = _dimention * _resolution;
-        _ocGrid.setConstant(_dimention, _dimention, ocgrid_constants::UNKNOWN);
+        _ocGrid.setConstant(_dimention, _dimention, 0);
+        _min_free_val = min_free_val;
+        _max_free_val = max_free_val;
+        _min_busy_val = min_busy_val;
+        _max_busy_val = max_busy_val;
     };
         
-    void update(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s, float lim)
+    void update(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s, float lim, float free_addition, float busy_addition)
     {
-        refresh_grid_with_lim(p1s, p2s, lim);
+        refresh_grid_with_lim(p1s, p2s, lim, free_addition, busy_addition);
     }
     
     const Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& get_map()
@@ -47,7 +43,7 @@ public:
     std::vector<Eigen::Vector2f> get_obstcl_points()
     {
         std::vector<Eigen::Vector2f> res;
-        std::vector<GridIndex> inds = find_cells_more_than(ocgrid_constants::MIN_BUSY);
+        std::vector<GridIndex> inds = find_cells_more_than(_min_busy_val);
         for (GridIndex index : inds)
         {
             res.push_back(center_of_cell(index));
@@ -61,7 +57,7 @@ public:
 
     void clear()
     {
-        _ocGrid.setConstant(_dimention, _dimention, ocgrid_constants::UNKNOWN);
+        _ocGrid.setConstant(_dimention, _dimention, 0);
     }
     
     void exponentially_foget(float rate)
@@ -170,13 +166,13 @@ private:
     void add_value_on_index_with_lim_check(const GridIndex& index, int8_t value)
     {
         _ocGrid(index.x,index.y) += value;
-        if (_ocGrid(index.x,index.y) > ocgrid_constants::MAX_BUSY)
+        if (_ocGrid(index.x,index.y) > _max_busy_val)   
         {
-            _ocGrid(index.x,index.y) = ocgrid_constants::MAX_BUSY;
+            _ocGrid(index.x,index.y) = _max_busy_val;
         }
-        if (_ocGrid(index.x,index.y) < ocgrid_constants::MIN_FREE)
+        if (_ocGrid(index.x,index.y) < _min_free_val)
         {
-            _ocGrid(index.x,index.y) = ocgrid_constants::MIN_FREE;
+            _ocGrid(index.x,index.y) = _min_free_val;
         }
     }
     
@@ -332,23 +328,9 @@ private:
         return indexes;
     };
         
-    void refresh_grid_with_lim(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s, float lim)
+    void refresh_grid_with_lim(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s, float lim, float free_addition, float busy_addition)
     {
-        
-        /* 
-        for (int i = 0; i < p1s.size(); i ++)
-        {
-            Eigen::Vector2f p1 = p1s.at(i);
-            Eigen::Vector2f p2 = p2s.at(i);
-                 
-            std::vector<GridIndex> begin_ray_opened =  x_area_indexes_of_point(p1);
-            for (const GridIndex& index : begin_ray_opened)
-            {
-                add_value_on_index_with_lim_check(index, ocgrid_constants::FREE_ADDITION);
-            }
-        }
-        */
-        
+                
         for (int i = 0; i < p1s.size(); i ++)
         {
             Eigen::Vector2f p1 = p1s.at(i);
@@ -357,7 +339,7 @@ private:
             std::vector<GridIndex> on_ray_opened =  onray_free_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : on_ray_opened)
             {
-                add_value_on_index_with_lim_check(index, ocgrid_constants::FREE_ADDITION);
+                add_value_on_index_with_lim_check(index, free_addition);
             }
         }
         
@@ -369,7 +351,7 @@ private:
             std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : end_ray_closed)
             {
-                add_value_on_index_with_lim_check(index, ocgrid_constants::BUSY_ADDITION);
+                add_value_on_index_with_lim_check(index, busy_addition);
             }
         }
     };
@@ -406,4 +388,9 @@ private:
     float _size;
     float _resolution;
     int _dimention;
+    
+    float _min_free_val;
+    float _max_free_val;
+    float _min_busy_val;
+    float _max_busy_val;
 };

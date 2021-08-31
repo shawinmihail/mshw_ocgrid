@@ -4,30 +4,36 @@
 #include<vector>
 #include <eigen3/Eigen/src/Core/ArrayBase.h>
 #include"Eigen/Dense"
+#include"trajectory_keeper.h"
 
 int main(int argc, char *argv[])
 {
-    OcGrid og(3.5, 0.5);
+    TrajectoryKeeper tk;
+    tk.reinit(3);
     
-
-    std::vector<Eigen::Vector2f> p1s;
-    p1s.push_back(Eigen::Vector2f(0.0, 0.0));
-    p1s.push_back(Eigen::Vector2f(0.0, 0.0));
-    p1s.push_back(Eigen::Vector2f(0.0, 0.0));
-
-    std::vector<Eigen::Vector2f> p2s;
-    p2s.push_back(Eigen::Vector2f(1.1, 1.0));
-    p2s.push_back(Eigen::Vector2f(1.1, 0.0));
-    p2s.push_back(Eigen::Vector2f(1.25, 1.25));
-
-    og.update(p1s, p2s, 10);
-    std::vector<Eigen::Vector2f> vectors = og.get_obstcl_points();
-    for (auto v : vectors)
+    float t0 = 0;
+    Eigen::Vector3f p0(0.0, 0.0, 0.0);
+    Eigen::Vector4f q0(1.0, 0.0, 0.0, 0.0);
+    for (int i = 0; i < 7; i++)
     {
-        std::cout << std::endl << v.transpose() << std::endl;
+        std::cout << i << std::endl;
+        t0 = t0 + 0.1;
+        p0 = p0 + Eigen::Vector3f(1,2,3);
+        q0 = q0 + Eigen::Vector4f(0,0,0,0.1);
+        q0 = q0 / q0.norm();
+        bool full = tk.addPoint(t0, p0, q0);
+        if (full)
+        {
+            std::cout << "full" << std::endl;
+            break;
+        }
     }
-
-    std::cout << std::endl << og.get_map().cast<int>() << std::endl;
     
-    return 0;
+    TrajectoryKeeperPoint p_out;
+    bool res = tk.getApproximation(0.3, p_out);
+    if(res)
+        std::cout << "OK" << std::endl;
+    else
+        std::cout << "NOT OK" << std::endl;
+    p_out.print();
 }

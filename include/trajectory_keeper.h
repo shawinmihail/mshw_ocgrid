@@ -49,6 +49,7 @@ public:
                 //<< std::endl;
                 
                 _skip_counter ++;
+                return _is_full;
                 
                 if (_skip_counter > 5)
                 {

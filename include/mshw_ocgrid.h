@@ -15,35 +15,52 @@ struct GridIndex
     int y;
 };
 
+enum MapLayer
+{
+    COMMON,
+    HUMAN,
+    PILLAR,
+    VEHICLE,
+    ANIMAL,
+    OTHER,
+    UNKNOWN,
+    MAP_LAYER_END
+};
+
 class OcGrid
 {
 public:
     OcGrid(float min_size, float resolution, float min_free_val, float max_free_val, float min_busy_val, float max_busy_val)
     {
+        //_human_ocmap; _pillar_ocmap; _vehicle_ocmap; _animal_ocmap; _other_ocmap;
         _resolution = resolution;
         _dimention = (int)std::ceil(min_size/resolution);
         _size = _dimention * _resolution;
-        _ocGrid.setConstant(_dimention, _dimention, 0);
         _min_free_val = min_free_val;
-        _max_free_val = max_free_val;
-        _min_busy_val = min_busy_val;
         _max_busy_val = max_busy_val;
+        
+        for (int i = COMMON; i != MAP_LAYER_END; i++)
+        {
+            Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> map;
+            map.setConstant(_dimention, _dimention, 0);
+            _ocmap_layers.push_back(map);
+        }
     };
         
-    void update(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s, float lim, float free_addition, float busy_addition)
+    void update(const std::vector<Eigen::Vector2f> p1s, const std::vector<Eigen::Vector2f> p2s, float lim, float free_addition, float busy_addition, MapLayer map_layer)
     {
-        refresh_grid_with_lim(p1s, p2s, lim, free_addition, busy_addition);
-    }
+        refresh_grid_with_lim(p1s, p2s, lim, free_addition, busy_addition, map_layer);
+    };
     
-    const Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& get_map()
+    const Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& get_map(MapLayer map_layer)
     {
-        return _ocGrid;
-    }
+        return _ocmap_layers.at(map_layer);
+    };
     
-    std::vector<Eigen::Vector2f> get_obstcl_points()
+    std::vector<Eigen::Vector2f> get_obstcl_points(float busy_lim, MapLayer map_layer)
     {
         std::vector<Eigen::Vector2f> res;
-        std::vector<GridIndex> inds = find_cells_more_than(_min_busy_val);
+        std::vector<GridIndex> inds = find_cells_more_than(busy_lim, map_layer);
         for (GridIndex index : inds)
         {
             res.push_back(center_of_cell(index));
@@ -57,12 +74,20 @@ public:
 
     void clear()
     {
-        _ocGrid.setConstant(_dimention, _dimention, 0);
+        for (int i = COMMON; i != MAP_LAYER_END; i++)
+        {
+            _ocmap_layers.at(i).setConstant(_dimention, _dimention, 0);
+        }
     }
     
     void exponentially_foget(float rate)
     {
-        _ocGrid = (_ocGrid.cast<float>() * rate).cast<int8_t>();
+        
+        for (int i = COMMON; i != MAP_LAYER_END; i++)
+        {
+            auto map = _ocmap_layers.at(i);
+            map = (map.cast<float>() * rate).cast<int8_t>();
+        }
     }
     
     float get_size()
@@ -158,21 +183,22 @@ private:
         return index;
     };
     
-    void set_value_on_index(const GridIndex& index, int8_t value)
+    void set_value_on_index(const GridIndex& index, int8_t value, MapLayer map_layer)
     {
-        _ocGrid(index.x,index.y) = value;
+        _ocmap_layers.at(map_layer)(index.x,index.y) = value;
     }
     
-    void add_value_on_index_with_lim_check(const GridIndex& index, int8_t value)
-    {
-        _ocGrid(index.x,index.y) += value;
-        if (_ocGrid(index.x,index.y) > _max_busy_val)   
+    void add_value_on_index_with_lim_check(const GridIndex& index, int8_t value, MapLayer map_layer)
+    {   
+        auto map = _ocmap_layers.at(map_layer);
+        map(index.x,index.y) += value;
+        if (map(index.x,index.y) > _max_busy_val)   
         {
-            _ocGrid(index.x,index.y) = _max_busy_val;
+            map(index.x,index.y) = _max_busy_val;
         }
-        if (_ocGrid(index.x,index.y) < _min_free_val)
+        if (map(index.x,index.y) < _min_free_val)
         {
-            _ocGrid(index.x,index.y) = _min_free_val;
+            map(index.x,index.y) = _min_free_val;
         }
     }
     
@@ -328,7 +354,7 @@ private:
         return indexes;
     };
         
-    void refresh_grid_with_lim(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s, float lim, float free_addition, float busy_addition)
+    void refresh_grid_with_lim(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s, float lim, float free_addition, float busy_addition, MapLayer map_layer)
     {
                 
         for (int i = 0; i < p1s.size(); i ++)
@@ -339,7 +365,7 @@ private:
             std::vector<GridIndex> on_ray_opened =  onray_free_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : on_ray_opened)
             {
-                add_value_on_index_with_lim_check(index, free_addition);
+                add_value_on_index_with_lim_check(index, free_addition, map_layer);
             }
         }
         
@@ -351,19 +377,21 @@ private:
             std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : end_ray_closed)
             {
-                add_value_on_index_with_lim_check(index, busy_addition);
+                add_value_on_index_with_lim_check(index, busy_addition, map_layer);
             }
         }
     };
     
-    std::vector<GridIndex> find_cells_more_than(int8_t cell_type)
+    std::vector<GridIndex> find_cells_more_than(int8_t val, MapLayer map_layer)
     {
         std::vector<GridIndex> res;
+        auto map = _ocmap_layers.at(map_layer);
+        
         for (int x = 0; x < _dimention; x++)
         {
             for (int y = 0; y < _dimention; y++)
             {
-                if (_ocGrid(x,y) > cell_type)
+                if (map(x,y) > val)
                 {
                     GridIndex gi;
                     gi.x = x;
@@ -384,13 +412,11 @@ private:
     }
 
 private:
-    Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> _ocGrid;
+    std::vector<Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>> _ocmap_layers;
     float _size;
     float _resolution;
     int _dimention;
     
     float _min_free_val;
-    float _max_free_val;
-    float _min_busy_val;
     float _max_busy_val;
 };

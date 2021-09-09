@@ -8,32 +8,30 @@
 
 int main(int argc, char *argv[])
 {
-    TrajectoryKeeper tk;
-    tk.reinit(3);
+    OcGrid ocGrid(10, 2, -50, -10, 10, 50);
     
-    float t0 = 0;
-    Eigen::Vector3f p0(0.0, 0.0, 0.0);
-    Eigen::Vector4f q0(1.0, 0.0, 0.0, 0.0);
-    for (int i = 0; i < 7; i++)
+    std::vector<Eigen::Vector2f> p1s;
+    std::vector<Eigen::Vector2f> p2s;
+    
+    p1s.push_back(Eigen::Vector2f(0,0));
+    //p1s.push_back(Eigen::Vector2f(0,0));
+    //p1s.push_back(Eigen::Vector2f(0,0));
+    //p2s.push_back(Eigen::Vector2f(1,0));
+    //p2s.push_back(Eigen::Vector2f(1,1));
+    p2s.push_back(Eigen::Vector2f(1,-1));
+    
+    float lim = 10; float free_addition = -1; float busy_addition = 5; 
+
+    
+    ocGrid.update(p1s, p2s, lim, free_addition, busy_addition, MapLayer::COMMON);
+    
+    std::vector<Eigen::Vector2f> vectors = ocGrid.get_obstcl_points(1, MapLayer::COMMON);
+    for (auto v : vectors)
     {
-        std::cout << i << std::endl;
-        t0 = t0 + 0.1;
-        p0 = p0 + Eigen::Vector3f(1,2,3);
-        q0 = q0 + Eigen::Vector4f(0,0,0,0.1);
-        q0 = q0 / q0.norm();
-        bool full = tk.addPoint(t0, p0, q0);
-        if (full)
-        {
-            std::cout << "full" << std::endl;
-            break;
-        }
+        std::cout << std::endl << v.transpose() << std::endl;
     }
+
+    ocGrid.print_map(COMMON);
     
-    TrajectoryKeeperPoint p_out;
-    bool res = tk.getApproximation(0.3, p_out);
-    if(res)
-        std::cout << "OK" << std::endl;
-    else
-        std::cout << "NOT OK" << std::endl;
-    p_out.print();
+    return 0;
 }

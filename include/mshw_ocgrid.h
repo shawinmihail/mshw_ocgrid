@@ -85,7 +85,7 @@ public:
         
         for (int i = COMMON; i != MAP_LAYER_END; i++)
         {
-            auto map = _ocmap_layers.at(i);
+            Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& map = _ocmap_layers.at(i);
             map = (map.cast<float>() * rate).cast<int8_t>();
         }
     }
@@ -104,6 +104,11 @@ public:
     {
         return _dimention;
     };
+    
+    void print_map(MapLayer map_layer)
+    {
+        std::cout << std::endl << get_map(map_layer).cast<int>() << std::endl;
+    }
     
 private:
     bool check_index_in(const GridIndex& index)
@@ -190,7 +195,7 @@ private:
     
     void add_value_on_index_with_lim_check(const GridIndex& index, int8_t value, MapLayer map_layer)
     {   
-        auto map = _ocmap_layers.at(map_layer);
+        Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& map = _ocmap_layers.at(map_layer);
         map(index.x,index.y) += value;
         if (map(index.x,index.y) > _max_busy_val)   
         {
@@ -201,7 +206,7 @@ private:
             map(index.x,index.y) = _min_free_val;
         }
     }
-    
+        
     std::vector<GridIndex> x_area_indexes_of_point(const Eigen::Vector2f& p)
     {
         std::vector<GridIndex> indexes;
@@ -379,13 +384,13 @@ private:
             {
                 add_value_on_index_with_lim_check(index, busy_addition, map_layer);
             }
-        }
+        }    
     };
     
     std::vector<GridIndex> find_cells_more_than(int8_t val, MapLayer map_layer)
     {
         std::vector<GridIndex> res;
-        auto map = _ocmap_layers.at(map_layer);
+        Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& map = _ocmap_layers.at(map_layer);
         
         for (int x = 0; x < _dimention; x++)
         {

@@ -113,7 +113,7 @@ public:
 private:
     bool check_index_in(const GridIndex& index)
     {
-        if (index.x > _dimention || index.y > _dimention || index.x < 0 || index.y < 0)
+        if (index.x >= _dimention || index.y >= _dimention || index.x < 0 || index.y < 0)
         {
             return false;
         }
@@ -361,7 +361,6 @@ private:
         
     void refresh_grid_with_lim(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s, float lim, float free_addition, float busy_addition, MapLayer map_layer)
     {
-                
         for (int i = 0; i < p1s.size(); i ++)
         {
             Eigen::Vector2f p1 = p1s.at(i);
@@ -373,7 +372,7 @@ private:
                 add_value_on_index_with_lim_check(index, free_addition, map_layer);
             }
         }
-        
+                
         for (int i = 0; i < p1s.size(); i ++)
         {
             Eigen::Vector2f p1 = p1s.at(i);
@@ -382,9 +381,11 @@ private:
             std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : end_ray_closed)
             {
+                //std::cout << index.x << " " << index.y << std::endl;
                 add_value_on_index_with_lim_check(index, busy_addition, map_layer);
             }
-        }    
+        }
+        //std::cout << static_cast<int>(_ocmap_layers.at(COMMON)(18, 31)) << std::endl;
     };
     
     std::vector<GridIndex> find_cells_more_than(int8_t val, MapLayer map_layer)

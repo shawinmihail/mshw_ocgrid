@@ -21,6 +21,17 @@ struct GridIndex
     };
 };
 
+struct NeoSector
+{
+    Eigen::Vector2f sector_origin;
+    Eigen::Vector2f sector_dir;
+    float sector_angle;
+    float sector_range;
+    float mes_range;
+    float free_addition;
+    float busy_addition;
+};
+
 enum MapLayer
 {
     COMMON,
@@ -60,9 +71,10 @@ public:
             Eigen::Vector2f p1 = p1s.at(i);
             Eigen::Vector2f p2 = p2s.at(i);
 
-            std::vector<GridIndex> on_ray_opened =  onray_free_indexes_with_lim(p1, p2, lim);
+            std::vector<GridIndex> on_ray_opened = onray_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : on_ray_opened)
             {
+                std::cout << "x: " << index.x << " y: " << index.y << std::endl;
                 add_value_on_index_with_lim_check(index, free_addition, map_layer);
             }
         }
@@ -72,7 +84,7 @@ public:
             Eigen::Vector2f p1 = p1s.at(i);
             Eigen::Vector2f p2 = p2s.at(i);
 
-            std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, lim);
+            std::vector<GridIndex> end_ray_closed =  endray_indexes_with_lim(p1, p2, lim);
             for (const GridIndex& index : end_ray_closed)
             {
                 add_value_on_index_with_lim_check(index, busy_addition, map_layer);
@@ -89,7 +101,7 @@ public:
         Eigen::Vector2f sector_origin(r(0), r(1));
         Eigen::Vector3f dir3 = quatRotate(q, Eigen::Vector3f(1,0,0));
         Eigen::Vector2f sector_dir(dir3(0), dir3(1));
-        std::vector<GridIndex> sector_opened =  sector_free_indexes(sector_origin, sector_dir, r_lim, phi_lim);
+        std::vector<GridIndex> sector_opened =  sector_internal_indexes(sector_origin, sector_dir, r_lim, phi_lim);
         
         //std::cout << "sector_origin: " << sector_origin.transpose() << std::endl;
         //std::cout << "sector_dir: " << sector_dir.transpose() << std::endl;
@@ -109,12 +121,50 @@ public:
             Eigen::Vector2f p1 = p1s.at(i);
             Eigen::Vector2f p2 = p2s.at(i);
 
-            std::vector<GridIndex> end_ray_closed =  endray_closed_indexes_with_lim(p1, p2, r_lim);
+            std::vector<GridIndex> end_ray_closed =  endray_indexes_with_lim(p1, p2, r_lim);
             for (const GridIndex& index : end_ray_closed)
             {
                 add_value_on_index_with_lim_check(index, busy_addition, map_layer);
                 //std::cout << "a : " << index.x << std::endl;
                 //std::cout << "b : " << index.y << std::endl;
+            }
+        }
+    };
+    
+    void refresh_grid_with_neo_sectors(const std::vector<NeoSector>& neo_sectors, MapLayer map_layer)
+    {
+        
+        
+        /* opened */
+        /*
+        for (auto& s : neo_sectors)
+        {
+            std::vector<GridIndex> opened = 
+                sector_internal_indexes(s.sector_origin, s.sector_dir, s.sector_range, s.sector_angle);
+            for (auto& o : opened)
+            {
+                add_value_on_index_with_lim_check(o, s.free_addition, map_layer);
+            }
+        }
+        */
+        
+        /* closed */
+        for (auto& s : neo_sectors)
+        {
+            std::vector<GridIndex> closed;
+            // check, if sector so small we use ray update procedure to avoid empty cell sector
+            if (s.mes_range * s.sector_angle > 2*_resolution && s.mes_range > 2*_resolution)
+            {
+                closed = sector_border_indexes(s.sector_origin, s.sector_dir, s.mes_range, s.sector_angle);
+            }
+            else
+            {
+                closed = endray_indexes_with_lim(
+                    s.sector_origin, s.sector_origin + s.sector_dir * s.mes_range, s.sector_range);
+            }
+            for (auto& c : closed)
+            {
+                add_value_on_index_with_lim_check(c, s.busy_addition, map_layer);
             }
         }
     };
@@ -174,7 +224,7 @@ public:
     
     void print_map(MapLayer map_layer)
     {
-        std::cout << std::endl << get_map(map_layer).cast<int>() << std::endl;
+        std::cout << std::endl << get_map(map_layer).transpose().cast<int>() << std::endl;
     }
     
 private:
@@ -294,7 +344,7 @@ private:
         return indexes;
     };
     
-    std::vector<GridIndex> endray_closed_indexes_with_lim(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float lim)
+    std::vector<GridIndex> endray_indexes_with_lim(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float lim)
     {
         float eps = ocgrid_constants::eps;
         std::vector<GridIndex> indexes;
@@ -313,7 +363,7 @@ private:
         return x_area_indexes_of_point(p2);
     }
     
-    std::vector<GridIndex> onray_free_indexes_with_lim(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float lim)
+    std::vector<GridIndex> onray_indexes_with_lim(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2, float lim)
     {
         float eps = ocgrid_constants::eps;
         std::vector<GridIndex> indexes;
@@ -331,12 +381,12 @@ private:
         }
         
         Eigen::Vector2f p2_cut = p1 + dir*ndp;
-        return onray_free_indexes(p1, p2_cut);
+        return onray_indexes(p1, p2_cut);
     };
     
-    std::vector<GridIndex> sector_free_indexes(const Eigen::Vector2f& sector_origin,
-                                               const Eigen::Vector2f& sector_dir,
-                                               float r_lim, float phi_lim)
+    std::vector<GridIndex> sector_internal_indexes(const Eigen::Vector2f& sector_origin,
+                                                   const Eigen::Vector2f& sector_dir,
+                                                   float r_lim, float phi_lim)
     {
         float eps = ocgrid_constants::eps;
         std::vector<GridIndex> indexes;
@@ -392,7 +442,66 @@ private:
         //
     };
     
-    std::vector<GridIndex> onray_free_indexes(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2)
+    std::vector<GridIndex> sector_border_indexes(const Eigen::Vector2f& sector_origin,
+                                                 const Eigen::Vector2f& sector_dir,
+                                                 float r_lim, float phi_lim)
+    {
+        float eps = ocgrid_constants::eps;
+        std::vector<GridIndex> indexes;
+        
+        Eigen::Vector4f q_half_phi(cos(phi_lim/4), 0, 0, sin(phi_lim/4));
+        Eigen::Vector2f a = sector_dir * r_lim;
+        float a_phi = atan2(a(1), a(0));
+        Eigen::Vector3f a3(a(0), a(1), 0);
+        Eigen::Vector3f b3 = quatRotate(q_half_phi, a3);
+        Eigen::Vector3f c3 = quatRotate(quatInverse(q_half_phi), a3);
+        Eigen::Vector2f b(b3(0), b3(1));
+        Eigen::Vector2f c(c3(0), c3(1));
+        Eigen::Vector2f a_end = sector_origin + a;
+        Eigen::Vector2f b_end = sector_origin + b;
+        Eigen::Vector2f c_end = sector_origin + c;
+        
+        float xmin = std::min( std::min(sector_origin(0), a_end(0)),  std::min(b_end(0), c_end(0)) );
+        float xmax = std::max( std::max(sector_origin(0), a_end(0)),  std::max(b_end(0), c_end(0)) );
+        float ymin = std::min( std::min(sector_origin(1), a_end(1)),  std::min(b_end(1), c_end(1)) );
+        float ymax = std::max( std::max(sector_origin(1), a_end(1)),  std::max(b_end(1), c_end(1)) );
+        
+        xmin = std::max(-_size/2.f + eps, xmin);
+        xmax = std::min(_size/2.f - eps, xmax);
+        ymin = std::max(-_size/2.f + eps, ymin);
+        ymax = std::min(_size/2.f - eps, ymax);
+        
+        int xmin_ind = static_cast<int>((xmin + _size/2) / _resolution);
+        int xmax_ind = static_cast<int>((xmax + _size/2) / _resolution);
+        int ymin_ind = static_cast<int>((ymin + _size/2) / _resolution);
+        int ymax_ind = static_cast<int>((ymax + _size/2) / _resolution);
+
+        for (int x_ind = xmin_ind; x_ind <= xmax_ind; x_ind++)
+        {
+            for (int y_ind = ymin_ind; y_ind <= ymax_ind; y_ind++)
+            {
+                Eigen::Vector2f cell_center = center_of_cell(GridIndex {x_ind, y_ind});
+                Eigen::Vector2f ray = cell_center - sector_origin;
+                float dist = ray.norm();
+                float phi = atan2(ray(1), ray(0));
+                float abs_rot = std::abs(shortestRotation(a_phi, phi));
+                float d_res = sqrt(2.f)*_resolution / 2.f;
+                if ((dist > (r_lim - d_res)) && (dist < (r_lim + d_res)) && (abs_rot < phi_lim / 2.f))
+                {
+                    GridIndex index{x_ind, y_ind};
+                    if (check_index_in(index))
+                    {
+                        indexes.push_back(index);
+                    }
+                }
+            }
+        }
+        
+        return indexes;
+        //
+    };
+    
+    std::vector<GridIndex> onray_indexes(const Eigen::Vector2f& p1, const Eigen::Vector2f& p2)
     { 
         float eps = ocgrid_constants::eps;
         std::vector<GridIndex> indexes;

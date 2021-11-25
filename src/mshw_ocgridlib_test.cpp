@@ -8,30 +8,16 @@
 
 int main(int argc, char *argv[])
 {
-    OcGrid ocGrid(10, 2, -50, -10, 10, 50);
-    
-    std::vector<Eigen::Vector2f> p1s;
-    std::vector<Eigen::Vector2f> p2s;
-    
-    p1s.push_back(Eigen::Vector2f(0,0));
-    //p1s.push_back(Eigen::Vector2f(0,0));
-    //p1s.push_back(Eigen::Vector2f(0,0));
-    //p2s.push_back(Eigen::Vector2f(1,0));
-    //p2s.push_back(Eigen::Vector2f(1,1));
-    p2s.push_back(Eigen::Vector2f(1,-1));
-    
-    float lim = 10; float free_addition = -1; float busy_addition = 5; 
-
-    
-    ocGrid.update(p1s, p2s, lim, free_addition, busy_addition, MapLayer::COMMON);
-    
-    std::vector<Eigen::Vector2f> vectors = ocGrid.get_obstcl_points(1, MapLayer::COMMON);
-    for (auto v : vectors)
-    {
-        std::cout << std::endl << v.transpose() << std::endl;
-    }
-
+    OcGrid ocGrid(15, 2, -50, -10, 10, 50);
+    ocGrid.fill_for_test(COMMON);
     ocGrid.print_map(COMMON);
     
+    auto local_map = ocGrid.get_local_map(Eigen::Vector2f(4,0), 1.1, COMMON);
+    std::cout << std::endl << local_map.map.transpose().cast<int>() << std::endl;
+    std::cout << std::endl << local_map.size << std::endl;
+    std::cout << std::endl << local_map.resolution << std::endl;
+    std::cout << std::endl << local_map.dimention << std::endl;
+    
+
     return 0;
 }

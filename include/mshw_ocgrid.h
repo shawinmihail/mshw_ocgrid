@@ -21,6 +21,14 @@ struct GridIndex
     };
 };
 
+struct LocalMap
+{
+    Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> map;
+    float size;
+    float resolution;
+    int dimention;
+};
+
 struct NeoSector
 {
     Eigen::Vector2f sector_origin;
@@ -185,6 +193,48 @@ public:
         return res;
     };
     
+    LocalMap get_local_map(Eigen::Vector2f r, float half_size, MapLayer map_layer)
+    {
+        Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> map;
+        int initial_dim = 2*half_size / _resolution;
+        map.setConstant(initial_dim, initial_dim, 0);
+        LocalMap lm {map, 2*half_size, _resolution, initial_dim};
+        
+        
+        GridIndex local_center = index_of_point(r);
+        if (!check_index_in(local_center))
+        {
+            return lm;
+        }
+
+        
+        GridIndex top_right = index_of_point(r + Eigen::Vector2f(half_size,    half_size));
+        GridIndex top_left = index_of_point(r + Eigen::Vector2f (-half_size,   half_size));
+        GridIndex bot_right = index_of_point(r + Eigen::Vector2f(half_size,   -half_size));
+        GridIndex bot_left = index_of_point(r + Eigen::Vector2f (-half_size,  -half_size));
+        
+        top_right.print();
+        top_left.print();
+        bot_right.print();
+        bot_left.print();
+        
+        if (!check_index_in(top_right) || !check_index_in(top_left) || !check_index_in(bot_right) || !check_index_in(bot_left))
+        {
+            return lm;
+        }
+        
+        int dx = top_right.x - top_left.x + 1;
+        //int dy = top_right.y - bot_right.y + 1;
+        int dy = dx;
+        
+        lm.map = _ocmap_layers.at(static_cast<size_t>(map_layer)).block(bot_left.x, bot_left.y, dx, dy);
+        lm.dimention = dx;
+        lm.resolution = _resolution;
+        lm.size = lm.dimention * lm.resolution;
+        
+        return lm;
+    }
+    
     ~OcGrid()
     {
     };
@@ -225,6 +275,17 @@ public:
     void print_map(MapLayer map_layer)
     {
         std::cout << std::endl << get_map(map_layer).transpose().cast<int>() << std::endl;
+    }
+    
+    void fill_for_test(MapLayer map_layer)
+    {
+        for (int x = 0; x < _dimention; x++)
+        {
+            for (int y = 0; y < _dimention; y++)
+            {
+                _ocmap_layers.at(static_cast<size_t>(map_layer))(x,y) = x*x*y;
+            }
+        }
     }
     
 private:
@@ -620,7 +681,7 @@ private:
         float center_y = -(_resolution * _dimention)/2 + (_resolution * index.y) + _resolution/2;
         return Eigen::Vector2f(center_x, center_y);
     }
-
+    
 private:
     std::vector<Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>> _ocmap_layers;
     float _size;

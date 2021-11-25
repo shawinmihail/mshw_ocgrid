@@ -212,12 +212,7 @@ public:
         GridIndex top_left = index_of_point(r + Eigen::Vector2f (-half_size,   half_size));
         GridIndex bot_right = index_of_point(r + Eigen::Vector2f(half_size,   -half_size));
         GridIndex bot_left = index_of_point(r + Eigen::Vector2f (-half_size,  -half_size));
-        
-        top_right.print();
-        top_left.print();
-        bot_right.print();
-        bot_left.print();
-        
+                
         if (!check_index_in(top_right) || !check_index_in(top_left) || !check_index_in(bot_right) || !check_index_in(bot_left))
         {
             return lm;

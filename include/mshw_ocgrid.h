@@ -178,6 +178,37 @@ public:
         }
     };
     
+    void refresh_grid_with_neo_sectors_simple(const std::vector<NeoSector>& neo_sectors, float max_radius, MapLayer map_layer)
+    {
+        
+        
+        /* opened */
+        for (auto& s : neo_sectors)
+        {
+            Eigen::Vector2f p1 = s.sector_origin;
+            Eigen::Vector2f p2 = s.sector_origin + s.sector_dir * s.mes_range;
+            std::vector<GridIndex> on_ray_opened = onray_indexes_with_lim(p1, p2, max_radius);
+            for (const GridIndex& index : on_ray_opened)
+            {
+                add_value_on_index_with_lim_check(index, s.busy_addition, map_layer);
+            }
+        }
+
+        
+        /* closed */
+        for (auto& s : neo_sectors)
+        {
+            Eigen::Vector2f p1 = s.sector_origin;
+            Eigen::Vector2f p2 = s.sector_origin + s.sector_dir * s.mes_range;
+            std::vector<GridIndex> end_ray_closed =  endray_indexes_with_lim(p1, p2, max_radius);
+            for (const GridIndex& index : end_ray_closed)
+            {
+                add_value_on_index_with_lim_check(index, s.busy_addition, map_layer);
+            }
+        }
+        //
+    };
+    
     const Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& get_map(MapLayer map_layer)
     {
         return _ocmap_layers.at(map_layer);

@@ -190,7 +190,7 @@ public:
             std::vector<GridIndex> on_ray_opened = onray_indexes_with_lim(p1, p2, max_radius);
             for (const GridIndex& index : on_ray_opened)
             {
-                add_value_on_index_with_lim_check(index, s.busy_addition, map_layer);
+                add_value_on_index_with_lim_check(index, s.free_addition, map_layer);
             }
         }
 

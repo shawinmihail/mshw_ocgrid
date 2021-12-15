@@ -24,6 +24,7 @@ struct GridIndex
 struct LocalMap
 {
     Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> map;
+    Eigen::Vector2f origin;
     float size;
     float resolution;
     int dimention;
@@ -197,11 +198,11 @@ public:
     {
         Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> map;
         int initial_dim = 2*half_size / _resolution;
-        map.setConstant(initial_dim, initial_dim, 0);
-        LocalMap lm {map, 2*half_size, _resolution, initial_dim};
-        
-        
+        map.setConstant(initial_dim, initial_dim, 0);        
         GridIndex local_center = index_of_point(r);
+        Eigen::Vector2f origin = center_of_cell(local_center);
+        LocalMap lm {map, origin, 2*half_size, _resolution, initial_dim};
+        
         if (!check_index_in(local_center))
         {
             return lm;
@@ -223,6 +224,7 @@ public:
         int dy = dx;
         
         lm.map = _ocmap_layers.at(static_cast<size_t>(map_layer)).block(bot_left.x, bot_left.y, dx, dy);
+        lm.origin = origin;
         lm.dimention = dx;
         lm.resolution = _resolution;
         lm.size = lm.dimention * lm.resolution;

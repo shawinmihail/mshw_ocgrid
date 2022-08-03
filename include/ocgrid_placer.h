@@ -33,6 +33,15 @@ public:
             GridIndex ind_current = ocgrid_index_of_point(r_map, _dimention, _resolution);
             int x_cell_shift = ind_current.x - ind_center.x;
             int y_cell_shift = ind_current.y - ind_center.y;
+            if (abs(x_cell_shift) > _dimention-1 || abs(y_cell_shift) > _dimention-1)
+            {
+                while(true) // for stop send ocgrid data
+                {
+                    std::cout << "WrOcgrid: ocgrid placer: ERROR: CAN'T MAKE REPLACE MAP PROCEDURE: WRONG MAP SHIFT" << std::endl;
+                    usleep(1000000);
+                }
+            }
+            
             Eigen::Vector2f dr_shift(x_cell_shift*_resolution, y_cell_shift*_resolution);
             _origin = _origin + dr_shift;
             ocGrid.shift_map(-x_cell_shift, -y_cell_shift);

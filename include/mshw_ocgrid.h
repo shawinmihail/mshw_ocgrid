@@ -53,6 +53,21 @@ enum MapLayer
     MAP_LAYER_END
 };
 
+GridIndex ocgrid_index_of_point(const Eigen::Vector2f& p,  int _dimention, float _resolution)
+{
+    GridIndex index;
+    index.x = std::floor(p.x() / _resolution + (float)_dimention / 2.f);
+    index.y = std::floor(p.y() / _resolution + (float)_dimention / 2.f);
+    return index;
+};
+
+Eigen::Vector2f ocgrid_center_of_cell(GridIndex index, int _dimention, float _resolution)
+{
+    float center_x = -(_resolution * _dimention)/2 + (_resolution * index.x) + _resolution/2;
+    float center_y = -(_resolution * _dimention)/2 + (_resolution * index.y) + _resolution/2;
+    return Eigen::Vector2f(center_x, center_y);
+}
+
 class OcGrid
 {
 public:
@@ -285,17 +300,17 @@ public:
         }
     }
     
-    float get_size()
+    float get_size() const
     {
         return _size;
     };
     
-    float get_resolution()
+    float get_resolution() const
     {
         return _resolution;
     };
     
-    int get_dimention()
+        int get_dimention() const
     {
         return _dimention;
     };
@@ -303,7 +318,7 @@ public:
     void print_map(MapLayer map_layer)
     {
         std::cout << std::endl << get_map(map_layer).transpose().cast<int>() << std::endl;
-    }
+    };
     
     void fill_for_test(MapLayer map_layer)
     {
@@ -314,7 +329,83 @@ public:
                 _ocmap_layers.at(static_cast<size_t>(map_layer))(x,y) = x*x*y;
             }
         }
-    }
+    };
+    
+    void shift_map(int x_cell_shift, int y_cell_shift)
+    {
+
+        /* map shift */
+        // cut indexes
+        int cut_ind_x_1 = 0;
+        int cut_ind_x_2 = 0;
+        int cut_ind_y_1 = 0;
+        int cut_ind_y_2 = 0;
+        int cut_block_x = _dimention - abs(x_cell_shift);
+        int cut_block_y = _dimention - abs(y_cell_shift);
+        //x
+        if (x_cell_shift >= 0)
+        {
+            cut_ind_x_1 = 0;
+            cut_ind_x_2 = _dimention - x_cell_shift - 1;
+        }
+        else
+        {
+            cut_ind_x_1 = -x_cell_shift;
+            cut_ind_x_2 = _dimention;
+        }
+        //y
+        if (y_cell_shift >= 0)
+        {
+            cut_ind_y_1 = 0;
+            cut_ind_y_2 = _dimention - y_cell_shift - 1;
+        }
+        else
+        {
+            cut_ind_y_1 = -y_cell_shift;
+            cut_ind_y_2 = _dimention;
+        }
+        // insert indexes
+        int insert_ind_x_1 = 0;
+        int insert_ind_x_2 = 0;
+        int insert_ind_y_1 = 0;
+        int insert_ind_y_2 = 0;
+        //x
+        if (x_cell_shift >= 0)
+        {
+            insert_ind_x_1 = x_cell_shift;
+            insert_ind_x_2 = _dimention - 1;
+        }
+        else
+        {
+            insert_ind_x_1 = 0;
+            insert_ind_x_2 = _dimention + x_cell_shift - 1;
+        }
+        //y
+        if (y_cell_shift >= 0)
+        {
+            insert_ind_y_1 = y_cell_shift;
+            insert_ind_y_2 = _dimention - 1;
+        }
+        else
+        {
+            insert_ind_y_1 = 0;
+            insert_ind_y_2 = _dimention + y_cell_shift - 1;
+        }
+    
+        
+        for (int i = COMMON; i != MAP_LAYER_END; i++)
+        {
+            Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic>& map = _ocmap_layers.at(i);
+            
+            Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> map_sector = map.block(cut_ind_x_1, cut_ind_y_1, cut_block_x, cut_block_y);
+            
+            Eigen::Matrix<int8_t, Eigen::Dynamic, Eigen::Dynamic> new_map;
+            new_map.setConstant(_dimention, _dimention, 0);
+            new_map.block(insert_ind_x_1, insert_ind_y_1, cut_block_x, cut_block_y) = map_sector;
+            
+            map = new_map;
+        }
+    };
     
 private:
     bool check_index_in(const GridIndex& index)
@@ -388,10 +479,7 @@ private:
     
     GridIndex index_of_point(const Eigen::Vector2f& p)
     {
-        GridIndex index;
-        index.x = std::floor(p.x() / _resolution + (float)_dimention / 2.f);
-        index.y = std::floor(p.y() / _resolution + (float)_dimention / 2.f);
-        return index;
+        return ocgrid_index_of_point(p, _dimention, _resolution);
     };
     
     void set_value_on_index(const GridIndex& index, int8_t value, MapLayer map_layer)
@@ -705,9 +793,7 @@ private:
     
     Eigen::Vector2f center_of_cell(GridIndex index)
     {
-        float center_x = -(_resolution * _dimention)/2 + (_resolution * index.x) + _resolution/2;
-        float center_y = -(_resolution * _dimention)/2 + (_resolution * index.y) + _resolution/2;
-        return Eigen::Vector2f(center_x, center_y);
+        return ocgrid_center_of_cell(index, _dimention, _resolution);
     }
     
 private:

@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <cmath>
 #include <vector>
+#include <set>
 #include "mshw_quatmath.h"
 
 namespace ocgrid_constants
@@ -17,8 +18,40 @@ struct GridIndex
     
     void print() const
     {
-        std::cout << "x: " << x << " y: " << y << std::endl; 
+        std::cout << "x: " << x << " y: " << y << std::endl;
     };
+};
+
+inline bool operator<(const GridIndex& lhs, const GridIndex& rhs)
+{
+    if (lhs.x < rhs.x) return true;
+    if (lhs.x > rhs.x) return false;
+    if (lhs.y < rhs.y) return true;
+    return false;
+};
+
+struct GridIndexWithVal
+{
+    
+    GridIndexWithVal(int x_, int y_)
+    {
+        g.x = x_;
+        g.y = y_;
+        val = 1;
+    };
+    
+    GridIndex g;
+    mutable int val;
+    
+    void print() const
+    {
+        std::cout << "x: " << g.x << " y: " << g.y << " val: " << val << std::endl;
+    };
+};
+
+inline bool operator<(const GridIndexWithVal& lhs, const GridIndexWithVal& rhs)
+{
+    return operator<(lhs.g, rhs.g);
 };
 
 struct LocalMap
@@ -119,7 +152,7 @@ public:
     void refresh_grid_with_sector(const std::vector<Eigen::Vector2f>& p1s, const std::vector<Eigen::Vector2f>& p2s,
                                   const Eigen::Vector3f& r, const Eigen::Vector4f& q,
                                   float r_lim, float phi_lim, 
-                                  float free_addition, float busy_addition,
+                                  float free_addition, float busy_addition, float busy_cell_addition_lim,
                                   MapLayer map_layer)
     {
         Eigen::Vector2f sector_origin(r(0), r(1));
@@ -127,31 +160,40 @@ public:
         Eigen::Vector2f sector_dir(dir3(0), dir3(1));
         std::vector<GridIndex> sector_opened =  sector_internal_indexes(sector_origin, sector_dir, r_lim, phi_lim);
         
-        //std::cout << "sector_origin: " << sector_origin.transpose() << std::endl;
-        //std::cout << "sector_dir: " << sector_dir.transpose() << std::endl;
-        //std::cout << "so_size: " << sector_opened.size() << std::endl;
-        //std::cout << "p1s_size: " << p1s.size() << std::endl;
-        
         for (const GridIndex& index : sector_opened)
         {
             add_value_on_index_with_lim_check(index, free_addition, map_layer);
-            //std::cout << "x : " << index.x << std::endl;
-            //std::cout << "y : " << index.y << std::endl;
-            //index.print();
         }
-                
+              
+        std::set<GridIndexWithVal> closed_set;
+        std::set<GridIndexWithVal>::iterator it;
+        std::pair<std::set<GridIndexWithVal>::iterator,bool> res;
         for (int i = 0; i < p1s.size(); i ++)
         {
             Eigen::Vector2f p1 = p1s.at(i);
             Eigen::Vector2f p2 = p2s.at(i);
-
             std::vector<GridIndex> end_ray_closed =  endray_indexes_with_lim(p1, p2, r_lim);
+            
             for (const GridIndex& index : end_ray_closed)
             {
-                add_value_on_index_with_lim_check(index, busy_addition, map_layer);
-                //std::cout << "a : " << index.x << std::endl;
-                //std::cout << "b : " << index.y << std::endl;
+                res = closed_set.insert(GridIndexWithVal{index.x, index.y});
+                if (res.second == false)
+                {
+                    it = res.first;
+                    (*it).val ++;
+                }
             }
+        }
+        
+        for (const GridIndexWithVal& index_with_val : closed_set)
+        {
+            //index_with_val.print();
+            int cut_addition = index_with_val.val * busy_addition / 4; // use / 4 cause we use x area when we find close points
+            if (cut_addition > busy_cell_addition_lim)
+            {
+                cut_addition = busy_cell_addition_lim;
+            }
+            add_value_on_index_with_lim_check(index_with_val.g, cut_addition, map_layer);
         }
     };
     
@@ -218,9 +260,10 @@ public:
             std::vector<GridIndex> end_ray_closed =  endray_indexes_with_lim(p1, p2, max_radius);
             for (const GridIndex& index : end_ray_closed)
             {
-                add_value_on_index_with_lim_check(index, s.busy_addition, map_layer);
+                add_value_on_index_with_lim_check(index, s.busy_addition / 4, map_layer); // use / 4 cause we use x_area_indexes_of_point when find endray_indexes_with_lim
             }
         }
+        
         //
     };
     

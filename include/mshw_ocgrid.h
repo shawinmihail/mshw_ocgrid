@@ -260,7 +260,7 @@ public:
             std::vector<GridIndex> end_ray_closed =  endray_indexes_with_lim(p1, p2, max_radius);
             for (const GridIndex& index : end_ray_closed)
             {
-                add_value_on_index_with_lim_check(index, s.busy_addition / 4, map_layer); // use / 4 cause we use x_area_indexes_of_point when find endray_indexes_with_lim
+                add_value_on_index_with_lim_check(index, s.busy_addition, map_layer);
             }
         }
         
